@@ -7,10 +7,11 @@ import httpx
 import asyncio
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+import networkx as nx
+from sklearn.neighbors import kneighbors_graph
 
 # Constants
 API_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
-
 
 def load_data(file_path):
     """Load CSV data with automatic encoding detection."""
@@ -19,7 +20,6 @@ def load_data(file_path):
     except Exception as e:
         print(f"Error loading data: {e}")
         sys.exit(1)
-
 
 def analyze_data(df):
     """Perform dynamic data analysis."""
@@ -33,7 +33,6 @@ def analyze_data(df):
     except Exception as e:
         print(f"Error analyzing data: {e}")
         sys.exit(1)
-
 
 def visualize_data(df):
     """Generate and save dynamic visualizations."""
@@ -77,11 +76,26 @@ def visualize_data(df):
             plt.close()
             image_files.append(cluster_file)
 
+        # Network construction and clustering
+        if numeric_df.shape[1] > 1:
+            adjacency_matrix = kneighbors_graph(numeric_df.dropna(), n_neighbors=5, mode='connectivity', include_self=False)
+            G = nx.from_scipy_sparse_matrix(adjacency_matrix)
+            clustering = nx.community.greedy_modularity_communities(G)
+            modularity_file = 'network_clustering.png'
+            plt.figure()
+            pos = nx.spring_layout(G)
+            nx.draw(G, pos, with_labels=False, node_size=50, node_color='blue', edge_color='gray')
+            for i, community in enumerate(clustering):
+                nx.draw_networkx_nodes(G, pos, nodelist=list(community), node_color=plt.cm.tab10(i / len(clustering)))
+            plt.title('Network Construction and Clustering')
+            plt.savefig(modularity_file, dpi=300, bbox_inches='tight')
+            plt.close()
+            image_files.append(modularity_file)
+
         return image_files
     except Exception as e:
         print(f"Error visualizing data: {e}")
         sys.exit(1)
-
 
 def generate_dynamic_prompt(analysis, image_files):
     """Construct a dynamic prompt based on the analysis and visualizations."""
@@ -109,7 +123,6 @@ def generate_dynamic_prompt(analysis, image_files):
         visualizations=', '.join(image_files)
     )
     return prompt
-
 
 async def generate_narrative(analysis, image_files):
     """Generate a narrative using the LLM."""
@@ -149,7 +162,6 @@ async def generate_narrative(analysis, image_files):
             print(f"An unexpected error occurred: {e}")
     return "Narrative generation failed due to an error."
 
-
 def save_report(markdown_content):
     """Save the generated narrative as a Markdown file."""
     try:
@@ -157,7 +169,6 @@ def save_report(markdown_content):
             f.write(markdown_content)
     except Exception as e:
         print(f"Error saving report: {e}")
-
 
 def main(file_path):
     try:
@@ -169,7 +180,6 @@ def main(file_path):
         print("Analysis complete. Check README.md for the report.")
     except Exception as e:
         print(f"Error in main execution: {e}")
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
