@@ -58,7 +58,7 @@ def generate_narrative(analysis, image_files):
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
     }
-    prompt = f"Provide a detailed analysis based on the following data summary: {analysis}"
+    prompt = f"Provide a detailed analysis based on the following data summary: {analysis} also use the {image_files} for embedding visualizations"
     data = {
         "model": "gpt-4o-mini",
         "messages": [{"role": "user", "content": prompt}]
