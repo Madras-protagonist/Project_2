@@ -99,28 +99,15 @@ def visualize_data(df):
 
 def generate_dynamic_prompt(analysis, image_files):
     """Construct a dynamic prompt based on the analysis and visualizations."""
-    prompt = """
-        You are a data analyst telling a compelling story.
-        Here is the dataset's summary:
-        {summary}
-
-        These are the missing values:
-        {missing_values}
-
-        If applicable, here is the correlation analysis:
-        {correlation}
-
-        Visualizations include:
-        {visualizations}
-
-        Create a beautifully written narrative that feels like a story,
-        starting with an introduction about the dataset, diving into key findings,
-        and concluding with insightful takeaways.
-    """.format(
-        summary=analysis['summary'],
-        missing_values=analysis['missing_values'],
-        correlation=analysis.get('correlation', 'No correlation data available'),
-        visualizations=', '.join(image_files)
+    prompt = (
+        f"You are a data analyst telling a compelling story.\n"
+        f"Here is the dataset's summary: {analysis['summary']}\n\n"
+        f"These are the missing values: {analysis['missing_values']}\n\n"
+        f"If applicable, here is the correlation analysis: {analysis.get('correlation', 'No correlation data available')}\n\n"
+        f"Visualizations include: {', '.join(image_files)}\n\n"
+        f"Create a beautifully written narrative that feels like a story, "
+        f"starting with an introduction about the dataset, diving into key findings, "
+        f"and concluding with insightful takeaways."
     )
     return prompt
 
