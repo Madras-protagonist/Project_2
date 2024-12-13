@@ -11,7 +11,6 @@ from sklearn.preprocessing import StandardScaler
 # Constants
 API_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
-
 def detect_encoding(file_path):
     """Detect the file encoding for reading."""
     try:
@@ -20,7 +19,6 @@ def detect_encoding(file_path):
         return result['encoding']
     except Exception as e:
         raise ValueError(f"Encoding detection failed: {e}")
-
 
 def load_data(file_path):
     """Load CSV data with automatic encoding detection."""
@@ -33,7 +31,6 @@ def load_data(file_path):
     except Exception as e:
         raise ValueError(f"Error loading data: {e}")
 
-
 def analyze_data(df):
     """Perform dynamic data analysis."""
     try:
@@ -41,13 +38,16 @@ def analyze_data(df):
             'summary': df.describe(include='all', datetime_is_numeric=True).to_dict(),
             'missing_values': df.isnull().sum().to_dict(),
         }
+
         numeric_df = df.select_dtypes(include=['number'])
         if not numeric_df.empty:
-            analysis['correlation'] = numeric_df.corr().to_dict()
+            # Add correlation only if there are sufficient numeric columns
+            if numeric_df.shape[1] > 1:
+                analysis['correlation'] = numeric_df.corr().to_dict()
+        
         return analysis
     except Exception as e:
         raise ValueError(f"Error analyzing data: {e}")
-
 
 def visualize_data(df):
     """Generate and save dynamic visualizations."""
@@ -57,13 +57,14 @@ def visualize_data(df):
 
         numeric_df = df.select_dtypes(include=['number'])
 
+        # Visualizations based on data type
         for column in df.columns:
             plt.figure()
             try:
                 if df[column].dtype in ['float64', 'int64']:
                     sns.histplot(df[column].dropna(), kde=True)
                     plt.title(f'Distribution of {column}')
-                elif df[column].dtype == 'object':
+                elif df[column].dtype == 'object' and df[column].nunique() <= 20:
                     sns.countplot(y=df[column].fillna('Missing'))
                     plt.title(f'Count of {column}')
                 elif pd.api.types.is_datetime64_any_dtype(df[column]):
@@ -80,7 +81,8 @@ def visualize_data(df):
             finally:
                 plt.close()
 
-        if not numeric_df.empty:
+        # Correlation heatmap
+        if not numeric_df.empty and numeric_df.shape[1] > 1:
             plt.figure(figsize=(10, 8))
             sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt='.2f')
             plt.title('Correlation Heatmap')
@@ -88,6 +90,7 @@ def visualize_data(df):
             plt.savefig(heatmap_file, dpi=300, bbox_inches='tight')
             image_files.append(heatmap_file)
 
+            # Clustering if applicable
             if numeric_df.shape[1] > 1:
                 scaler = StandardScaler()
                 scaled_data = scaler.fit_transform(numeric_df.dropna())
@@ -102,7 +105,6 @@ def visualize_data(df):
     except Exception as e:
         raise ValueError(f"Error visualizing data: {e}")
 
-
 def generate_narrative(analysis, image_files):
     """Generate narrative using LLM."""
     token = os.environ.get("AIPROXY_TOKEN")
@@ -115,10 +117,10 @@ def generate_narrative(analysis, image_files):
     }
 
     prompt = (
-        f"You are an analyst. Based on the following data summary: {analysis}, "
-        f"and these visualizations: {', '.join(image_files)}, "
-        f"create a detailed and insightful analysis with a narrative that highlights key findings "
-        f"and integrates visual context effectively."
+        f"You are an insightful data analyst and visualization expert. Based on the provided analysis summary: {analysis}, "
+        f"and the associated visualizations: {', '.join(image_files)}, generate a comprehensive and engaging narrative. "
+        f"Highlight key patterns, correlations, and anomalies from the data. For visualizations, create interpretative "
+        f"descriptions that explain their relevance and insights. Use an accessible and intriguing tone to keep the reader engaged."
     )
 
     data = {
@@ -144,7 +146,6 @@ def generate_narrative(analysis, image_files):
     except Exception as e:
         raise RuntimeError(f"Unexpected error during narrative generation: {e}")
 
-
 def main(file_path):
     try:
         df = load_data(file_path)
@@ -160,7 +161,6 @@ def main(file_path):
     except Exception as e:
         print(f"Error in main execution: {e}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
